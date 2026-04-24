@@ -1,0 +1,47 @@
+# ================================================================
+# Local AI Stack - Docker Compose (CentOS 7, 7 GB RAM)
+# ================================================================
+# Runs Ollama + Open WebUI in Docker containers
+# Memory-limited for low-RAM systems (7 GB)
+#
+# Usage:
+#   docker-compose -f docker-compose-centos.yml up -d
+#   docker-compose -f docker-compose-centos.yml down
+#   docker-compose -f docker-compose-centos.yml logs -f
+#
+# Open WebUI: http://localhost:8080
+# Ollama API: http://localhost:11434
+# ================================================================
+
+version: "2.4"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    mem_limit: 4g
+    memswap_limit: 6g
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    volumes:
+      - open_webui_data:/app/backend/data
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    mem_limit: 2g
+    memswap_limit: 3g
+    depends_on:
+      - ollama
+
+volumes:
+  ollama_data:
+  open_webui_data:
