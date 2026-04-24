@@ -1,0 +1,30 @@
+================================================================
+  InHouse AI Stack deployed!
+================================================================
+
+{{- if .Values.ingress.enabled }}
+  Open WebUI: http://{{ .Values.ingress.host }}
+{{- else if eq .Values.openwebui.service.type "NodePort" }}
+  Open WebUI: http://<NODE_IP>:{{ .Values.openwebui.service.nodePort | default "30080" }}
+{{- else }}
+  Open WebUI (port-forward):
+    kubectl port-forward svc/{{ include "inhouse-ai.fullname" . }}-openwebui {{ .Values.openwebui.service.port }}:{{ .Values.openwebui.service.port }}
+    Then open: http://localhost:{{ .Values.openwebui.service.port }}
+{{- end }}
+
+  Ollama API (port-forward):
+    kubectl port-forward svc/{{ include "inhouse-ai.fullname" . }}-ollama {{ .Values.ollama.service.port }}:{{ .Values.ollama.service.port }}
+    Then: http://localhost:{{ .Values.ollama.service.port }}
+
+{{- if .Values.modelPullJob.enabled }}
+  Models being pulled: {{ .Values.ollama.models | join ", " }}
+  Check progress: kubectl logs job/{{ include "inhouse-ai.fullname" . }}-model-pull -f
+{{- end }}
+
+  First visit: Create an admin account (fully local, no cloud).
+
+  Useful commands:
+    helm status {{ .Release.Name }}
+    helm upgrade {{ .Release.Name }} ./INHouseHelm
+    helm uninstall {{ .Release.Name }}
+================================================================

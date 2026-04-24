@@ -1,0 +1,82 @@
+================================================================
+  InHouse AI - Quick Reference Commands
+================================================================
+
+  HELM COMMANDS
+  ─────────────────────────────────────────────
+  helm install inhouse-ai ./INHouseHelm                    # Deploy the stack
+  helm upgrade inhouse-ai ./INHouseHelm                    # Apply config changes
+  helm uninstall inhouse-ai                                # Remove everything
+  helm status inhouse-ai                                   # Check release status
+  helm template inhouse-ai ./INHouseHelm                   # Preview generated YAML
+
+  ACCESS (Port-Forward)
+  ─────────────────────────────────────────────
+  kubectl port-forward svc/inhouse-ai-openwebui 8080:8080  # Open WebUI → http://localhost:8080
+  kubectl port-forward svc/inhouse-ai-ollama 11434:11434   # Ollama API → http://localhost:11434
+
+  POD & LOGS
+  ─────────────────────────────────────────────
+  kubectl get pods                                         # List all pods
+  kubectl logs -f deploy/inhouse-ai-ollama                 # Ollama logs
+  kubectl logs -f deploy/inhouse-ai-openwebui              # Open WebUI logs
+  kubectl logs job/inhouse-ai-model-pull -f                # Model pull job logs
+  kubectl describe pod <pod-name>                          # Debug a pod
+
+  OLLAMA - MODEL MANAGEMENT
+  ─────────────────────────────────────────────
+  kubectl exec -it deploy/inhouse-ai-ollama -- ollama list              # List installed models
+  kubectl exec -it deploy/inhouse-ai-ollama -- ollama pull deepseek-r1:1.5b    # Pull a model
+  kubectl exec -it deploy/inhouse-ai-ollama -- ollama pull qwen2.5:0.5b        # Pull Qwen small
+  kubectl exec -it deploy/inhouse-ai-ollama -- ollama pull phi4-mini            # Pull Phi-4 mini
+  kubectl exec -it deploy/inhouse-ai-ollama -- ollama pull codellama:7b         # Pull CodeLlama (needs 12GB+ RAM)
+  kubectl exec -it deploy/inhouse-ai-ollama -- ollama rm <model-name>           # Delete a model
+  kubectl exec -it deploy/inhouse-ai-ollama -- ollama show <model-name>         # Show model details
+
+  OLLAMA - CHAT IN TERMINAL
+  ─────────────────────────────────────────────
+  kubectl exec -it deploy/inhouse-ai-ollama -- ollama run deepseek-r1:1.5b     # Chat with DeepSeek
+  kubectl exec -it deploy/inhouse-ai-ollama -- ollama run qwen2.5:0.5b         # Chat with Qwen
+
+  OLLAMA - API (via port-forward on 11434)
+  ─────────────────────────────────────────────
+  curl http://localhost:11434/api/tags                                           # List models (JSON)
+  curl http://localhost:11434/api/generate -d '{"model":"deepseek-r1:1.5b","prompt":"Hello"}'   # Generate
+  curl http://localhost:11434/api/chat -d '{"model":"deepseek-r1:1.5b","messages":[{"role":"user","content":"Hi"}]}'  # Chat
+
+  SCALING & RESOURCES
+  ─────────────────────────────────────────────
+  kubectl scale deploy/inhouse-ai-openwebui --replicas=2   # Scale Open WebUI
+  kubectl top pods                                         # Check CPU/memory usage
+
+  OVERRIDE VALUES AT INSTALL
+  ─────────────────────────────────────────────
+  # NodePort access (no port-forward needed)
+  helm install inhouse-ai ./INHouseHelm --set openwebui.service.type=NodePort --set openwebui.service.nodePort=30080
+
+  # Custom models list
+  helm install inhouse-ai ./INHouseHelm --set "ollama.models={deepseek-r1:1.5b,qwen2.5:0.5b}"
+
+  # Lower memory for 7GB RAM systems
+  helm install inhouse-ai ./INHouseHelm --set ollama.resources.limits.memory=3Gi --set openwebui.resources.limits.memory=1Gi
+
+  # Enable ingress
+  helm install inhouse-ai ./INHouseHelm --set ingress.enabled=true --set ingress.host=ai.mycompany.com
+
+  TROUBLESHOOTING
+  ─────────────────────────────────────────────
+  kubectl get events --sort-by=.metadata.creationTimestamp  # Recent cluster events
+  kubectl describe deploy/inhouse-ai-ollama                # Deployment details
+  kubectl get pvc                                          # Check storage claims
+  kubectl exec -it deploy/inhouse-ai-ollama -- df -h       # Disk usage inside pod
+
+  SAFE MODELS FOR 7GB RAM
+  ─────────────────────────────────────────────
+  deepseek-r1:1.5b    ~1.1 GB   Fast responses, light tasks
+  qwen2.5:0.5b        ~400 MB   Ultra-fast, basic tasks
+  phi4-mini            ~2.4 GB   Microsoft, good quality
+  gemma3:1b            ~815 MB   Google, compact
+
+  DO NOT USE ON 7GB RAM (will OOM):
+  deepseek-r1:7b, qwen2.5:7b, codellama:7b, llama3.1:8b
+================================================================

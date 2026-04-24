@@ -1,0 +1,31 @@
+{{- if and .Values.litellm.enabled .Values.litellmIngress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "inhouse-ai.fullname" . }}-litellm
+  labels:
+    {{- include "inhouse-ai.litellm.labels" . | nindent 4 }}
+  {{- with .Values.litellmIngress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.litellmIngress.className }}
+  ingressClassName: {{ .Values.litellmIngress.className }}
+  {{- end }}
+  {{- if .Values.litellmIngress.tls }}
+  tls:
+    {{- toYaml .Values.litellmIngress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.litellmIngress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "inhouse-ai.fullname" . }}-litellm
+                port:
+                  name: http
+{{- end }}

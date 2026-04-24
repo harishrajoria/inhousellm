@@ -1,0 +1,31 @@
+{{- if .Values.ollamaIngress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "inhouse-ai.fullname" . }}-ollama
+  labels:
+    {{- include "inhouse-ai.ollama.labels" . | nindent 4 }}
+  {{- with .Values.ollamaIngress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ollamaIngress.className }}
+  ingressClassName: {{ .Values.ollamaIngress.className }}
+  {{- end }}
+  {{- if .Values.ollamaIngress.tls }}
+  tls:
+    {{- toYaml .Values.ollamaIngress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ollamaIngress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "inhouse-ai.fullname" . }}-ollama
+                port:
+                  name: http
+{{- end }}

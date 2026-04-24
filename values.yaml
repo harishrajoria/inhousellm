@@ -1,0 +1,205 @@
+# ================================================================
+# InHouse AI Stack - Helm Values
+# ================================================================
+# Target: AKS - Standard_E16s_v5 (16 vCPUs, 128 GB RAM)
+# ================================================================
+
+# -- Global settings
+namespace: tracing
+
+# ================================================================
+# Ollama Configuration
+# ================================================================
+ollama:
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  service:
+    type: ClusterIP
+    port: 11434
+
+  resources:
+    requests:
+      memory: "16Gi"
+      cpu: "4"
+    limits:
+      memory: "64Gi"
+      cpu: "12"
+
+  persistence:
+    enabled: true
+    storageClass: "managed-csi"
+    size: 100Gi
+    accessMode: ReadWriteOnce
+
+  # ---------------------------------------------------------------
+  # Models managed here — add/remove and run: helm upgrade inhouse-ai ./INHouseHelm
+  # The model-pull Job will auto-pull all listed models after deploy.
+  # ---------------------------------------------------------------
+  models:
+    #- deepseek-r1:1.5b
+    - deepseek-r1:7b
+    #- qwen2.5:7b
+    - deepseek-coder-v2:16b
+    # Uncomment to add more models:
+    # - codellama:7b
+    # - llama3.1:8b
+    # - phi4-mini
+    # - qwen2.5:14b
+    # - deepseek-r1:14b
+
+# ================================================================
+# Open WebUI Configuration
+# ================================================================
+openwebui:
+  image:
+    repository: ghcr.io/open-webui/open-webui
+    tag: v0.8.3
+    pullPolicy: Always
+
+  replicas: 1
+
+  service:
+    type: ClusterIP
+    port: 8080
+    # Use NodePort to expose externally without ingress
+    # type: NodePort
+    # nodePort: 30080
+
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1"
+    limits:
+      memory: "4Gi"
+      cpu: "4"
+
+  persistence:
+    enabled: true
+    storageClass: "managed-csi"
+    size: 20Gi
+    accessMode: ReadWriteOnce
+
+  env: {}
+
+# ================================================================
+# External LLM Providers (e.g., Anthropic Claude)
+# ================================================================
+# Open WebUI can connect to external APIs alongside local Ollama models.
+# Add your provider connections here. They appear in the model dropdown.
+# ================================================================
+externalProviders:
+  anthropic:
+    enabled: false
+    # Create a K8s secret with your API key:
+    #   kubectl create secret generic anthropic-api-key \
+    #     --namespace tracing \
+    #     --from-literal=api-key=sk-ant-xxxxx
+    secretName: anthropic-api-key
+    secretKey: api-key
+
+# ================================================================
+# Ingress - Open WebUI
+# ================================================================
+ingress:
+  enabled: true
+  className: nginx-private
+  annotations: {}
+    # kubernetes.io/tls-acme: "true"
+  host: infra-gpt.bold.com
+  tls: 
+    - secretName: aks-ingress-bold-san 
+      hosts:
+        - infra-gpt.bold.com
+
+# ================================================================
+# Ingress - Ollama API (third-party access)
+# ================================================================
+ollamaIngress:
+  enabled: true
+  className: nginx-private
+  annotations: {}
+    # kubernetes.io/tls-acme: "true"
+  host: infra-gpt-api.bold.com
+  tls: 
+    - secretName: aks-ingress-bold-san 
+      hosts:
+        - infra-gpt-api.bold.com
+
+# ================================================================
+# Ingress - LiteLLM API (unified proxy access)
+# ================================================================
+litellmIngress:
+  enabled: false
+  className: nginx-private
+  annotations: {}
+    # kubernetes.io/tls-acme: "true"
+  host: infragpt.bold.com
+  tls:
+    - secretName: aks-ingress-bold-san
+      hosts:
+        - infragpt.bold.com
+
+# ================================================================
+# Model Pull Job
+# ================================================================
+modelPullJob:
+  enabled: true
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 600
+
+# ================================================================
+# LiteLLM Proxy — Unified API for Ollama + Claude
+# ================================================================
+# LiteLLM sits between your apps and the model backends.
+# Any app calling this single endpoint gets access to both
+# local Ollama models AND Anthropic Claude via one API.
+#
+# Setup:
+#   1. Create a K8s secret with your Anthropic API key:
+#      kubectl create secret generic anthropic-api-key \
+#        --namespace tracing \
+#        --from-literal=api-key=sk-ant-xxxxx
+#   2. Set litellm.enabled=true below
+#   3. helm upgrade inhouse-ai ./INHouseHelm
+# ================================================================
+litellm:
+  enabled: false
+
+  image:
+    repository: ghcr.io/berriai/litellm
+    tag: main-stable
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  service:
+    type: ClusterIP
+    port: 4000
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+
+  # Anthropic API key secret (same as externalProviders above)
+  anthropic:
+    secretName: anthropic-api-key
+    secretKey: api-key
+
+  # Claude models to expose via LiteLLM
+  claudeModels:
+    - claude-sonnet-4-20250514
+    - claude-3-5-haiku-20241022
+    # - claude-3-opus-20240229
+
+  # Optional: master key to protect the LiteLLM proxy itself
+  # If set, callers must pass this key as Bearer token
+  # masterKey: ""

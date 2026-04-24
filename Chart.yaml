@@ -1,0 +1,13 @@
+apiVersion: v2
+name: inhouse-ai
+description: Local AI Stack - Ollama + Open WebUI Helm Chart
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - ollama
+  - open-webui
+  - ai
+  - llm
+maintainers:
+  - name: harish.kumar

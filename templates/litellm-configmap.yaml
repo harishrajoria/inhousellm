@@ -1,0 +1,28 @@
+{{- if .Values.litellm.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "inhouse-ai.fullname" . }}-litellm-config
+  labels:
+    {{- include "inhouse-ai.litellm.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    model_list:
+      {{- /* Local Ollama models */}}
+      {{- range .Values.ollama.models }}
+      - model_name: {{ . }}
+        litellm_params:
+          model: ollama/{{ . }}
+          api_base: http://{{ include "inhouse-ai.fullname" $ }}-ollama:{{ $.Values.ollama.service.port }}
+      {{- end }}
+      {{- /* Anthropic Claude models */}}
+      {{- range .Values.litellm.claudeModels }}
+      - model_name: {{ . }}
+        litellm_params:
+          model: anthropic/{{ . }}
+          api_key: os.environ/ANTHROPIC_API_KEY
+      {{- end }}
+
+    general_settings:
+      master_key: os.environ/LITELLM_MASTER_KEY
+{{- end }}
